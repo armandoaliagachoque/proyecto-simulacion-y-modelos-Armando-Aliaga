@@ -83,3 +83,40 @@ scipy>=1.7.0
 - Mejoras en la interfaz gráfica para mayor usabilidad.
 
 - Elaboración de la documentación completa del proyecto.
+## Bitácora de Desarrollo
+
+A continuación, se detalla el registro de las actividades clave realizadas en las últimas sesiones del proyecto:
+
+### Clase 5 – 10 de septiembre
+* **Generadores Pseudoaleatorios:** Revisión y optimización de los métodos de generación previamente implementados.
+* **Nuevos Métodos:** Incorporación de los generadores **congruencial mixto** y **congruencial lineal**.
+* **Interfaz de Parámetros:** Ajuste de la GUI para permitir el ingreso de parámetros específicos (semilla, módulo, constante, etc.) para cada generador.
+* **Validación:** Implementación de validación de datos en los campos de entrada del formulario para asegurar la integridad de los parámetros.
+
+### Clase 6 – 17 de septiembre
+* **Formulario Principal:** Desarrollo del módulo principal dedicado a la configuración de las **pruebas estadísticas**.
+* **Parámetros Dinámicos:** Creación de campos dinámicos para ingresar valores como *n* (cantidad de datos), *k* (intervalos) y **nivel de significancia** ($\alpha$).
+* **Controles:** Adición de botones funcionales claves: **Generar**, **Probar** y **Exportar**.
+* **Visualización:** Implementación de la presentación de resultados numéricos de las pruebas en la interfaz.
+
+### Clase 7 – 24 de septiembre
+* **Mejora de la GUI:** Optimización del diseño mediante la segmentación de la interfaz en pestañas (**Generadores**, **Pruebas** y **Variables**).
+* **Gráficos:** Implementación de la visualización gráfica automática, incluyendo **histogramas** y **tablas de frecuencias**.
+* **Exportación:** Integración del sistema para exportar los resultados generados en formatos **CSV** y **Excel**.
+* **Pruebas:** Verificación de la funcionalidad completa y estabilidad del formulario principal.
+
+### Clase 8 – 8 de octubre
+* **Simulación Visual:** Introducción al **"Juego de la Vida"** de Conway como módulo de simulación complementario.
+* **Estructura del Tablero:** Creación de la matriz base para representar el estado de las celdas (vivas/muertas).
+* **Lógica de Evolución:** Programación de la lógica de evolución de las generaciones conforme a las reglas del juego.
+* **Renderizado:** Uso de librerías como `tkinter.Canvas` o `matplotlib` para la representación gráfica del tablero.
+
+### Clase 9 – 15 de octubre
+* **Integración:** Inclusión del módulo del **Juego de la Vida** dentro de la interfaz principal del proyecto.
+* **Controles Interactivos:** Adición de funcionalidades de control (iniciar, pausar, reiniciar y ajuste de tamaño del tablero).
+* **Optimización:** Refinamiento del algoritmo para mejorar el rendimiento de la simulación en tiempo real.
+* **Cierre de Módulos:** Revisión general del código fuente y pruebas finales de funcionamiento en entorno *offline*.
+
+### Clase 10 – 22 de octubre
+* **Sincronización:** Configuración y ejecución de la sincronización del proyecto con el repositorio remoto de **GitHub**.
+* **Documentación:** Actualización exhaustiva del archivo **README.md** para reflejar los últimos cambios y funcionalidades implementadas en el proyecto.
