@@ -10,7 +10,9 @@ from generadores import multiplicador_constante, productos_medios, cuadrados_med
 from pruebas.prueba_medias import prueba_medias
 from pruebas.prueba_varianza import prueba_varianza
 from pruebas.prueba_chi_cuadrado import prueba_chi_cuadrado
+from utils import distribuciones 
 from utils import exportador
+from utils.distribuciones import parametros_por_dist
 
 class SimulacionApp:
     def __init__(self):
@@ -28,6 +30,9 @@ class SimulacionApp:
         
         # Crear interfaz
         self.crear_interfaz()
+        
+        self.crear_pestana_juego_vida()
+
         
     def configurar_estilos(self):
         """Configurar estilos de la interfaz"""
@@ -76,6 +81,7 @@ class SimulacionApp:
         # Crear pestañas
         self.crear_pestana_generadores()
         self.crear_pestana_pruebas()
+        self.crear_pestana_distribuciones()
         self.crear_pestana_visualizacion()
         self.crear_pestana_exportacion()
         
@@ -275,6 +281,10 @@ class SimulacionApp:
         
         tk.Button(btn_frame, text="Mostrar Histograma", bg=self.color_amarillo,
                  command=self.mostrar_histograma).pack(side=tk.LEFT, padx=5)
+        tk.Button(frame, text="Mostrar Tabla de Frecuencias",
+                  bg=self.color_amarillo, fg=self.color_azul_oscuro,
+                  command=self.mostrar_tabla_frecuencias).grid(row=8, column=0, columnspan=4, pady=10)
+
         tk.Button(btn_frame, text="Mostrar Secuencia", bg=self.color_azul_medio, fg=self.color_blanco,
                  command=self.mostrar_secuencia).pack(side=tk.LEFT, padx=5)
     
@@ -438,23 +448,17 @@ class SimulacionApp:
         if filename:
             exportador.exportar_txt(self.numeros_generados, filename)
             messagebox.showinfo("Éxito", "Números exportados correctamente")
-            tk.Button(frame, text="Revelar Mensaje Oculto",
-          bg=self.color_amarillo, fg=self.color_azul_oscuro,
-          command=self.revelar_mensaje).grid(row=5, column=0, pady=10)
-
     
     def exportar_numeros_csv(self):
         """Exportar números a archivo CSV"""
         if not self.numeros_generados:
             messagebox.showwarning("Advertencia", "No hay números para exportar")
             return
-    
         
         filename = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
         if filename:
             exportador.exportar_csv(self.numeros_generados, filename)
             messagebox.showinfo("Éxito", "Números exportados correctamente")
-            
     
     def exportar_resultados_json(self):
         """Exportar resultados a JSON"""
@@ -466,43 +470,288 @@ class SimulacionApp:
         if filename:
             exportador.exportar_resultados(self.resultados_pruebas, filename)
             messagebox.showinfo("Éxito", "Resultados exportados correctamente")
+    def crear_pestana_distribuciones(self):
+        """Crear pestaña de distribuciones y variables"""
+        frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(frame, text="Distribuciones y Variables")
+
+        # Configurar grid
+        for i in range(4):
+            frame.columnconfigure(i, weight=1)
+        for i in range(10):
+            frame.rowconfigure(i, weight=1)
+
+        # Título
+        title = tk.Label(frame, text="GENERACIÓN DE VARIABLES ALEATORIAS",
+                         font=('Arial', 12, 'bold'),
+                         bg=self.color_azul_claro,
+                         fg=self.color_azul_oscuro)
+        title.grid(row=0, column=0, columnspan=4, pady=(0, 20))
+
+        # Tipo de distribución (Continua o Discreta)
+        tk.Label(frame, text="Tipo de Distribución:", bg=self.color_azul_claro).grid(row=1, column=0, sticky='w', padx=5)
+        self.tipo_dist_var = tk.StringVar(value="Continua")
+        ttk.Combobox(frame, textvariable=self.tipo_dist_var,
+                     values=["Continua", "Discreta"], width=15).grid(row=1, column=1, sticky='w', padx=5)
+
+        # Selector de distribución
+        tk.Label(frame, text="Distribución:", bg=self.color_azul_claro).grid(row=2, column=0, sticky='w', padx=5)
+        self.dist_var = tk.StringVar(value="uniforme_continua")
+        self.combo_distribucion = ttk.Combobox(
+            frame, textvariable=self.dist_var,
+            values=[
+                "uniforme_continua", "exponencial", "normal_box_muller", "gamma", "weibull",
+                "uniforme_discreta", "bernoulli", "binomial", "poisson", "geometrica"
+            ],
+            width=20
+        )
+        self.combo_distribucion.grid(row=2, column=1, sticky='w', padx=5)
+        self.combo_distribucion.bind("<<ComboboxSelected>>", lambda e: self.actualizar_parametros_distribucion(frame))
+
+        # Parámetros dinámicos
+        self.parametros_frame = ttk.Frame(frame)
+        self.parametros_frame.grid(row=3, column=0, columnspan=4, pady=10, sticky='ew')
+        self.parametros_entradas = {}
+        self.actualizar_parametros_distribucion(frame)
+
+        # Botón para generar
+        gen_btn = tk.Button(frame, text="Generar Distribución",
+                            bg=self.color_amarillo, fg=self.color_azul_oscuro,
+                            font=('Arial', 10, 'bold'),
+                            command=self.generar_distribucion)
+        gen_btn.grid(row=4, column=0, columnspan=4, pady=15)
+
+        # Área de texto para mostrar resultados
+        tk.Label(frame, text="Resultados de la Distribución:", bg=self.color_azul_claro,
+                 font=('Arial', 10, 'bold')).grid(row=5, column=0, columnspan=4, sticky='w')
+
+        self.resultados_dist_text = tk.Text(frame, height=10, width=80, bg=self.color_blanco)
+        self.resultados_dist_text.grid(row=6, column=0, columnspan=4, sticky='nsew')
+
+        scrollbar = tk.Scrollbar(frame, orient="vertical", command=self.resultados_dist_text.yview)
+        scrollbar.grid(row=6, column=4, sticky='ns')
+        self.resultados_dist_text.configure(yscrollcommand=scrollbar.set)
+
+        # Botón de histograma
+        tk.Button(frame, text="Mostrar Histograma",
+                  bg=self.color_azul_medio, fg=self.color_blanco,
+                  command=self.mostrar_histograma_distribucion).grid(row=7, column=0, columnspan=4, pady=10)
+
+
+    def actualizar_parametros_distribucion(self, parent_frame):
+        """Actualizar campos de parámetros según la distribución seleccionada"""
+        for widget in self.parametros_frame.winfo_children():
+            widget.destroy()
+        self.parametros_entradas.clear()
+
+        dist = self.dist_var.get()
+
+          # Usar el diccionario importado desde utils.distribuciones
+        parametros = parametros_por_dist.get(dist, [])
+
+        parametros = parametros_por_dist.get(dist, [])
+        for i, param in enumerate(parametros):
+            tk.Label(self.parametros_frame, text=f"{param}:", bg=self.color_azul_claro).grid(row=i, column=0, sticky='w', padx=5)
+            entry = tk.Entry(self.parametros_frame, width=10)
+            entry.grid(row=i, column=1, sticky='w', padx=5)
+            self.parametros_entradas[param] = entry
+
+
+    def generar_distribucion(self):
+        """Generar variables aleatorias según la distribución elegida"""
+        if not self.numeros_generados:
+            messagebox.showwarning("Advertencia", "Primero genere números pseudoaleatorios en la pestaña Generadores")
+            return
+
+        dist_name = self.dist_var.get()
+        n = len(self.numeros_generados)
+        params = {k: float(v.get()) if v.get() else 0 for k, v in self.parametros_entradas.items()}
+        if "n_trials" in params:
+           params["n_trials"] = int(params["n_trials"])
+        try:
+            funcion = getattr(distribuciones, dist_name)
+            valores = funcion(**params, n=n, numeros_uniformes=self.numeros_generados)
+            self.valores_distribucion = valores
+
+            # Mostrar los resultados
+            self.resultados_dist_text.delete(1.0, tk.END)
+            for i, val in enumerate(valores[:50], 1):
+                self.resultados_dist_text.insert(tk.END, f"{i}: {val:.5f}\n")
+
+            messagebox.showinfo("Éxito", f"Se generaron {n} valores con la distribución {dist_name}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al generar distribución: {str(e)}")
+
+
+    def mostrar_histograma_distribucion(self):
+        """Mostrar histograma de la distribución generada"""
+        if not hasattr(self, 'valores_distribucion') or not self.valores_distribucion:
+            messagebox.showwarning("Advertencia", "No hay datos de distribución generados")
+            return
+
+        self.ax.clear()
+        self.ax.hist(self.valores_distribucion, bins=20, alpha=0.7, color=self.color_azul_medio, edgecolor='black')
+        self.ax.set_xlabel('Valor')
+        self.ax.set_ylabel('Frecuencia')
+        self.ax.set_title(f'Histograma - {self.dist_var.get()}')
+        self.ax.grid(True, alpha=0.3)
+        self.canvas.draw()
+    def mostrar_tabla_frecuencias(self):
+        """Mostrar tabla de frecuencias de la distribución generada"""
+        if not hasattr(self, 'valores_distribucion') or not self.valores_distribucion:
+            messagebox.showwarning("Advertencia", "No hay datos de distribución generados")
+            return
+
+        # Crear nueva ventana emergente
+        ventana = tk.Toplevel(self.root)
+        ventana.title("Tabla de Frecuencias")
+        ventana.geometry("700x500")
+        ventana.configure(bg=self.color_azul_claro)
+
+        # Calcular frecuencias
+        datos = np.array(self.valores_distribucion)
+        n = len(datos)
+        num_intervalos = 10  # número fijo de clases
+        minimo, maximo = np.min(datos), np.max(datos)
+        amplitud = (maximo - minimo) / num_intervalos
+        limites = [minimo + i * amplitud for i in range(num_intervalos + 1)]
+
+        frecuencias = np.histogram(datos, bins=limites)[0]
+        rel_frec = frecuencias / n
+        acum_frec = np.cumsum(rel_frec)
+
+        # Frame principal
+        frame_tabla = ttk.Frame(ventana, padding=10)
+        frame_tabla.pack(fill='both', expand=True)
+
+        # Etiqueta título
+        tk.Label(frame_tabla, text="TABLA DE FRECUENCIAS", 
+                 font=('Arial', 14, 'bold'),
+                 bg=self.color_azul_oscuro, fg=self.color_amarillo,
+                 pady=5).pack(fill='x', pady=(0,10))
+
+        # Crear tabla con Treeview
+        columnas = ("intervalo", "frec_abs", "frec_rel", "frec_acum")
+        tabla = ttk.Treeview(frame_tabla, columns=columnas, show='headings', height=15)
+        tabla.pack(fill='both', expand=True)
+
+        # Encabezados
+        tabla.heading("intervalo", text="Intervalo")
+        tabla.heading("frec_abs", text="Frec. Absoluta")
+        tabla.heading("frec_rel", text="Frec. Relativa")
+        tabla.heading("frec_acum", text="Frec. Acumulada")
+
+        # Anchos
+        tabla.column("intervalo", anchor="center", width=180)
+        tabla.column("frec_abs", anchor="center", width=120)
+        tabla.column("frec_rel", anchor="center", width=120)
+        tabla.column("frec_acum", anchor="center", width=120)
+
+        # Insertar filas
+        for i in range(num_intervalos):
+            intervalo = f"[{limites[i]:.2f}, {limites[i+1]:.2f})"
+            tabla.insert("", "end", values=(
+                intervalo,
+                f"{frecuencias[i]}",
+                f"{rel_frec[i]:.4f}",
+                f"{acum_frec[i]:.4f}"
+            ))
+
+        # Scrollbars
+        scrollbar_y = ttk.Scrollbar(frame_tabla, orient='vertical', command=tabla.yview)
+        tabla.configure(yscroll=scrollbar_y.set)
+        scrollbar_y.pack(side='right', fill='y')
+
+        # Botón cerrar
+        tk.Button(ventana, text="Cerrar", bg=self.color_amarillo, fg=self.color_azul_oscuro,
+                  command=ventana.destroy, font=('Arial', 10, 'bold')).pack(pady=10)
+
+
     
     def run(self):
         """Ejecutar la aplicación"""
         self.root.mainloop()
         
-def revelar_mensaje(self):
-    """Revela el mensaje oculto en los números generados"""
-    if not self.numeros_generados:
-        messagebox.showwarning("Advertencia", "Primero genere oculte números")
-        return
-    
-    # Indicas la longitud del mensaje que ocultaste
-    longitud_mensaje = 7 
-    
-    mensaje_revelado = revelar_mensaje_de_numeros(self.numeros_generados, longitud_mensaje)
-    
-    messagebox.showinfo("Mensaje oculto", f"Mensaje oculto: {mensaje_revelado}")
+    def crear_pestana_juego_vida(self):
+        """Crear pestaña del Juego de la Vida"""
+        frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(frame, text="Juego de la Vida")
+
+        # Título
+        title = tk.Label(frame, text="SIMULACIÓN - JUEGO DE LA VIDA (Conway)",
+                         font=('Arial', 14, 'bold'),
+                         bg=self.color_azul_claro, fg=self.color_azul_oscuro)
+        title.pack(pady=10)
+
+        # Variables de control
+        self.grid_size = 30
+        self.running = False
+
+        # Crear el tablero inicial aleatorio
+        self.board = np.random.choice([0, 1], size=(self.grid_size, self.grid_size))
+
+        # Crear figura de Matplotlib
+        self.fig_vida, self.ax_vida = plt.subplots(figsize=(6, 6))
+        self.canvas_vida = FigureCanvasTkAgg(self.fig_vida, master=frame)
+        self.canvas_vida.get_tk_widget().pack(pady=10)
+        self.im = self.ax_vida.imshow(self.board, cmap="Blues")
+        self.ax_vida.set_title("Estado actual de la simulación")
+        self.ax_vida.axis("off")
+
+        # Botones de control
+        control_frame = ttk.Frame(frame)
+        control_frame.pack(pady=10)
+
+        tk.Button(control_frame, text="Iniciar", bg=self.color_amarillo, fg=self.color_azul_oscuro,
+                  command=self.iniciar_juego_vida, width=12).grid(row=0, column=0, padx=5)
+        tk.Button(control_frame, text="Pausar", bg=self.color_azul_medio, fg=self.color_blanco,
+                  command=self.pausar_juego_vida, width=12).grid(row=0, column=1, padx=5)
+        tk.Button(control_frame, text="Reiniciar", bg=self.color_amarillo, fg=self.color_azul_oscuro,
+                  command=self.reiniciar_juego_vida, width=12).grid(row=0, column=2, padx=5)
+
+    def actualizar_tablero(self):
+        """Actualizar tablero según las reglas del Juego de la Vida"""
+        new_board = np.copy(self.board)
+        for i in range(self.grid_size):
+            for j in range(self.grid_size):
+                # Contar vecinos vivos
+                vecinos = np.sum(self.board[max(0, i-1):min(self.grid_size, i+2),
+                                            max(0, j-1):min(self.grid_size, j+2)]) - self.board[i, j]
+
+                # Aplicar reglas
+                if self.board[i, j] == 1 and (vecinos < 2 or vecinos > 3):
+                    new_board[i, j] = 0  # Muerte
+                elif self.board[i, j] == 0 and vecinos == 3:
+                    new_board[i, j] = 1  # Nacimiento
+        self.board = new_board
+
+    def ejecutar_paso(self):
+        """Ejecutar un paso de simulación"""
+        if self.running:
+            self.actualizar_tablero()
+            self.im.set_data(self.board)
+            self.canvas_vida.draw()
+            self.root.after(200, self.ejecutar_paso)
+
+    def iniciar_juego_vida(self):
+        """Iniciar simulación"""
+        if not self.running:
+            self.running = True
+            self.ejecutar_paso()
+
+    def pausar_juego_vida(self):
+        """Pausar simulación"""
+        self.running = False
+
+    def reiniciar_juego_vida(self):
+        """Reiniciar tablero aleatoriamente"""
+        self.running = False
+        self.board = np.random.choice([0, 1], size=(self.grid_size, self.grid_size))
+        self.im.set_data(self.board)
+        self.canvas_vida.draw()
 
 
-def ocultar_mensaje_en_numeros(numeros, mensaje):
-    """
-    Oculta un mensaje de texto en el último dígito de los números pseudoaleatorios.
-    """
-    mensaje = mensaje.upper()
-    # Solo letras A-Z → 0-25
-    codigos = [(ord(c) - 65) % 10 for c in mensaje]  # modulo 10 para un dígito
-    numeros_ocultos = []
 
-    for i, num in enumerate(numeros):
-        if i < len(codigos):
-            # reemplazamos el último decimal por el código
-            parte_entera = int(num)
-            parte_decimal = float(f"0.{codigos[i]}")
-            numeros_ocultos.append(parte_entera + parte_decimal)
-        else:
-            numeros_ocultos.append(num)
-    return numeros_ocultos
 
         
 # Para ejecutar directamente
